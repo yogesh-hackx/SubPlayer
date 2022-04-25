@@ -93,7 +93,9 @@ export default function backlight($player, $video) {
     $player.insertBefore($backlight, $video);
 
     function run() {
-        const { clientWidth, clientHeight } = $video;
+        const { clientWidth, clientHeight, src } = $video;
+        // skipping backdrop for youtube video (coz of cross origin errors)
+        if (src.includes('googlevideo') && src.includes('videoplayback')) return;
         const colors = getColors($canvas, $video, clientWidth, clientHeight);
         colors.forEach(({ r, g, b }, index) => {
             const { $box, left, right, top, bottom } = matrix[index];
