@@ -3,11 +3,12 @@ import languages from '../libs/languages';
 import { t, Translate } from 'react-i18nify';
 import React, { useState, useCallback } from 'react';
 import { getExt, download } from '../utils';
-import { file2sub, sub2vtt, sub2srt, sub2txt } from '../libs/readSub';
+import { file2sub, sub2vtt, sub2srt, sub2txt, url2sub } from '../libs/readSub';
 import sub2ass from '../libs/readSub/sub2ass';
 import googleTranslate from '../libs/googleTranslate';
 import FFmpeg from '@ffmpeg/ffmpeg';
 import SimpleFS from '@forlagshuset/simple-fs';
+import ImportFromYT from './ImportFromYT';
 
 const Style = styled.div`
     display: flex;
@@ -23,7 +24,6 @@ const Style = styled.div`
         display: flex;
         justify-content: space-between;
         padding: 10px;
-        border-bottom: 1px solid rgb(255 255 255 / 20%);
 
         .btn {
             position: relative;
@@ -54,6 +54,32 @@ const Style = styled.div`
             width: 100%;
             height: 100%;
             opacity: 0;
+        }
+    }
+
+    .import-yt {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 8px 10px 8px;
+        border-bottom: 1px solid rgb(255 255 255 / 20%);
+
+        .btn {
+            display: flex;
+            align-items: center;
+            border-radius: 3px;
+            height: 35px;
+            padding: 0 32px;
+            background-color: #3f51b5;
+            user-select: none;
+            color: #fff;
+            cursor: pointer;
+            opacity: 0.85;
+            transition: all 0.2s ease 0s;
+
+            &:hover {
+                opacity: 1;
+            }
         }
     }
 
@@ -145,6 +171,7 @@ const Style = styled.div`
         border-bottom: 1px solid rgb(255 255 255 / 20%);
 
         select {
+            color: #000;
             width: 65%;
             outline: none;
             padding: 0 5px;
@@ -256,6 +283,7 @@ export default function Header({
 }) {
     const [translate, setTranslate] = useState('en');
     const [videoFile, setVideoFile] = useState(null);
+    const [ytModalVisible, setYtModalVisible] = useState(false)
 
     const decodeAudioData = useCallback(
         async (file) => {
@@ -364,8 +392,8 @@ export default function Header({
                 const ext = getExt(file.name);
                 const canPlayType = player.canPlayType(file.type);
                 if (canPlayType === 'maybe' || canPlayType === 'probably') {
-                    setVideoFile(file);
-                    decodeAudioData(file);
+                    // setVideoFile(file);
+                    // decodeAudioData(file);
                     const url = URL.createObjectURL(new Blob([file]));
                     waveform.decoder.destroy();
                     waveform.drawer.update();
@@ -389,6 +417,50 @@ export default function Header({
             }
         },
         [newSub, notify, player, setSubtitle, waveform, clearSubs, decodeAudioData],
+    );
+
+    const onYtVideoChange = useCallback(
+        async ({ video, subtitles, audio }) => {
+            if (video) {
+                // setVideoFile(video);
+                // decodeAudioData(video);
+                waveform.decoder.destroy();
+                waveform.drawer.update();
+                waveform.seek(0);
+                player.currentTime = 0;
+                clearSubs();
+
+                if (subtitles) {
+                    const sub = await url2sub(subtitles);
+                    setSubtitle(sub);
+                    console.log(sub);
+                } else {
+                    setSubtitle([
+                        newSub({
+                            start: '00:00:00.000',
+                            end: '00:00:01.000',
+                            text: t('SUB_TEXT'),
+                        }),
+                    ]);
+                }
+                player.src = video;
+            }
+        },
+        [newSub, notify, player, setSubtitle, waveform, clearSubs, decodeAudioData],
+    );
+
+    const openYTImportDialog = useCallback(
+        (event) => {
+           setYtModalVisible(true);
+        },
+        [],
+    );
+
+    const hideYTImportDialog = useCallback(
+        (event) => {
+           setYtModalVisible(false);
+        },
+        [],
     );
 
     const onSubtitleChange = useCallback(
@@ -484,6 +556,12 @@ export default function Header({
                         <Translate value="OPEN_SUB" />
                         <input className="file" type="file" onChange={onSubtitleChange} onClick={onInputClick} />
                     </div>
+                </div>
+                <div className='import-yt'>
+                    <div className="btn" onClick={() => openYTImportDialog()}>
+                        <Translate value="IMPORT_FROM_YOUTUBE" />
+                    </div>
+                    <ImportFromYT onYtVideoChange={onYtVideoChange} ytModalVisible={ytModalVisible} hideYTImportDialog={hideYTImportDialog} notify={notify} />
                 </div>
                 {window.crossOriginIsolated ? (
                     <div className="burn" onClick={burnSubtitles}>
