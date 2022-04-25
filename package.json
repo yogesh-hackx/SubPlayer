@@ -12,12 +12,12 @@
     "lodash": "^4.17.21",
     "normalize.css": "^8.0.1",
     "option-validator": "^2.0.6",
-    "react": "^17.0.2",
+    "react": "^18.0.0",
     "react-contextmenu": "^2.14.0",
-    "react-dom": "^17.0.2",
+    "react-dom": "^18.0.0",
     "react-i18nify": "^4.2.1",
     "react-notification-system": "^0.4.0",
-    "react-scripts": "4.0.3",
+    "react-scripts": "^5.0.1",
     "react-textarea-autosize": "^8.3.3",
     "react-transliterate": "^1.1.9",
     "react-virtualized": "^9.22.3",
@@ -46,7 +46,7 @@
       "last 1 safari version"
     ]
   },
-  "engines" : {
+  "engines": {
     "node": "14.17.0",
     "npm": "6.14.13"
   }
