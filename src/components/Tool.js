@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 import languages from '../libs/languages';
 import { t, Translate } from 'react-i18nify';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { getExt, download } from '../utils';
 import { file2sub, sub2vtt, sub2srt, sub2txt, url2sub } from '../libs/readSub';
 import sub2ass from '../libs/readSub/sub2ass';
@@ -9,6 +9,9 @@ import googleTranslate from '../libs/googleTranslate';
 import FFmpeg from '@ffmpeg/ffmpeg';
 import SimpleFS from '@forlagshuset/simple-fs';
 import ImportFromYT from './ImportFromYT';
+import Subtitles from './Subtitles';
+import { Dropdown, Menu } from 'antd';
+import Sub from '../libs/Sub';
 
 const Style = styled.div`
     display: flex;
@@ -280,10 +283,14 @@ export default function Header({
     setSubtitle,
     setProcessing,
     notify,
+    currentIndex,
+    checkSub,
+    updateSub,
+    setSubTranslationLang,
 }) {
     const [translate, setTranslate] = useState('en');
     const [videoFile, setVideoFile] = useState(null);
-    const [ytModalVisible, setYtModalVisible] = useState(false)
+    const [ytModalVisible, setYtModalVisible] = useState(false);
 
     const decodeAudioData = useCallback(
         async (file) => {
@@ -394,6 +401,7 @@ export default function Header({
                 if (canPlayType === 'maybe' || canPlayType === 'probably') {
                     // setVideoFile(file);
                     // decodeAudioData(file);
+                    resetTranslateLang();
                     const url = URL.createObjectURL(new Blob([file]));
                     waveform.decoder.destroy();
                     waveform.drawer.update();
@@ -419,6 +427,11 @@ export default function Header({
         [newSub, notify, player, setSubtitle, waveform, clearSubs, decodeAudioData],
     );
 
+    const resetTranslateLang = () => {
+        setTranslate('en');
+        localStorage.setItem('prevLang', 'en');
+    };
+
     const onYtVideoChange = useCallback(
         async ({ video, subtitles, audio }) => {
             if (video) {
@@ -429,6 +442,9 @@ export default function Header({
                 waveform.seek(0);
                 player.currentTime = 0;
                 clearSubs();
+
+                resetTranslateLang();
+                localStorage.setItem('lastYTVideo', video);
 
                 if (subtitles) {
                     const sub = await url2sub(subtitles);
@@ -449,19 +465,13 @@ export default function Header({
         [newSub, notify, player, setSubtitle, waveform, clearSubs, decodeAudioData],
     );
 
-    const openYTImportDialog = useCallback(
-        (event) => {
-           setYtModalVisible(true);
-        },
-        [],
-    );
+    const openYTImportDialog = useCallback((event) => {
+        setYtModalVisible(true);
+    }, []);
 
-    const hideYTImportDialog = useCallback(
-        (event) => {
-           setYtModalVisible(false);
-        },
-        [],
-    );
+    const hideYTImportDialog = useCallback((event) => {
+        setYtModalVisible(false);
+    }, []);
 
     const onSubtitleChange = useCallback(
         (event) => {
@@ -496,24 +506,37 @@ export default function Header({
     }, []);
 
     const downloadSub = useCallback(
-        (type) => {
+        (type, original = false) => {
             let text = '';
+            let subToDownload = [];
+
+            if (original && translate !== 'en') {
+                subtitle.forEach((sub) => {
+                    subToDownload.push(
+                        newSub({
+                            start: sub.start,
+                            end: sub.end,
+                            text:sub.originalText,
+                        }),
+                    );
+                });
+            } else subToDownload = subtitle;
             const name = `${Date.now()}.${type}`;
             switch (type) {
                 case 'vtt':
-                    text = sub2vtt(subtitle);
+                    text = sub2vtt(subToDownload);
                     break;
                 case 'srt':
-                    text = sub2srt(subtitle);
+                    text = sub2srt(subToDownload);
                     break;
                 case 'ass':
-                    text = sub2ass(subtitle);
+                    text = sub2ass(subToDownload);
                     break;
                 case 'txt':
-                    text = sub2txt(subtitle);
+                    text = sub2txt(subToDownload);
                     break;
                 case 'json':
-                    text = JSON.stringify(subtitle);
+                    text = JSON.stringify(subToDownload);
                     break;
                 default:
                     break;
@@ -526,7 +549,8 @@ export default function Header({
 
     const onTranslate = useCallback(() => {
         setLoading(t('TRANSLATING'));
-        googleTranslate(formatSub(subtitle), translate)
+        setSubTranslationLang(translate);
+        googleTranslate(formatSub(subtitle), translate, localStorage.getItem('prevLang'))
             .then((res) => {
                 setLoading('');
                 setSubtitle(formatSub(res));
@@ -542,10 +566,50 @@ export default function Header({
                     level: 'error',
                 });
             });
+
+        localStorage.setItem('prevLang', translate);
     }, [subtitle, setLoading, formatSub, setSubtitle, translate, notify]);
 
+    const onTranslateLangChange = useCallback(
+        (event) => {
+            setTranslate(event.target.value);
+        },
+        [subtitle, setLoading, formatSub, setSubtitle, translate, notify],
+    );
+
+    useEffect(() => {
+        if (localStorage.getItem('prevLang') !== null) {
+            setTranslate(localStorage.getItem('prevLang'));
+            setSubTranslationLang(localStorage.getItem('prevLang'));
+            console.log('Localstorage', localStorage.getItem('prevLang'));
+        } else {
+            localStorage.setItem('prevLang', 'en');
+        }
+    }, []);
+
+    const ExportMenuItems = (type) => {
+        return (
+            <Menu
+                onClick={(e) => downloadSub(type, e.key === '1')}
+                items={[
+                    {
+                        label: 'Original',
+                        key: '1',
+                        type,
+                    },
+                    {
+                        label: 'Translated',
+                        key: '2',
+                        type,
+                        disabled: translate === 'en'
+                    },
+                ]}
+            />
+        );
+    };
+
     return (
-        <Style className="tool">
+        <Style className="tool" id="tools">
             <div className="top">
                 <div className="import">
                     <div className="btn">
@@ -557,11 +621,16 @@ export default function Header({
                         <input className="file" type="file" onChange={onSubtitleChange} onClick={onInputClick} />
                     </div>
                 </div>
-                <div className='import-yt'>
+                <div className="import-yt">
                     <div className="btn" onClick={() => openYTImportDialog()}>
                         <Translate value="IMPORT_FROM_YOUTUBE" />
                     </div>
-                    <ImportFromYT onYtVideoChange={onYtVideoChange} ytModalVisible={ytModalVisible} hideYTImportDialog={hideYTImportDialog} notify={notify} />
+                    <ImportFromYT
+                        onYtVideoChange={onYtVideoChange}
+                        ytModalVisible={ytModalVisible}
+                        hideYTImportDialog={hideYTImportDialog}
+                        notify={notify}
+                    />
                 </div>
                 {window.crossOriginIsolated ? (
                     <div className="burn" onClick={burnSubtitles}>
@@ -571,15 +640,21 @@ export default function Header({
                     </div>
                 ) : null}
                 <div className="export">
-                    <div className="btn" onClick={() => downloadSub('ass')}>
-                        <Translate value="EXPORT_ASS" />
-                    </div>
-                    <div className="btn" onClick={() => downloadSub('srt')}>
-                        <Translate value="EXPORT_SRT" />
-                    </div>
-                    <div className="btn" onClick={() => downloadSub('vtt')}>
-                        <Translate value="EXPORT_VTT" />
-                    </div>
+                    <Dropdown overlay={() => ExportMenuItems('ass')} trigger={['click']}>
+                        <div className="btn">
+                            <Translate value="EXPORT_ASS" />
+                        </div>
+                    </Dropdown>
+                    <Dropdown overlay={() => ExportMenuItems('srt')} trigger={['click']}>
+                        <div className="btn">
+                            <Translate value="EXPORT_SRT" />
+                        </div>
+                    </Dropdown>
+                    <Dropdown overlay={() => ExportMenuItems('vtt')} trigger={['click']}>
+                        <div className="btn">
+                            <Translate value="EXPORT_VTT" />
+                        </div>
+                    </Dropdown>
                 </div>
                 <div className="operate">
                     <div
@@ -598,7 +673,7 @@ export default function Header({
                     </div>
                 </div>
                 <div className="translate">
-                    <select value={translate} onChange={(event) => setTranslate(event.target.value)}>
+                    <select value={translate} onChange={(event) => onTranslateLangChange(event)}>
                         {(languages[language] || languages.en).map((item) => (
                             <option key={item.key} value={item.key}>
                                 {item.name}
@@ -616,6 +691,16 @@ export default function Header({
                     <span>
                         <Translate value="HOTKEY_02" />
                     </span>
+                </div>
+
+                <div>
+                    <Subtitles
+                        currentIndex={currentIndex}
+                        subtitle={subtitle}
+                        checkSub={checkSub}
+                        player={player}
+                        updateSub={updateSub}
+                    />
                 </div>
             </div>
         </Style>
