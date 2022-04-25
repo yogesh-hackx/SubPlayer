@@ -25,7 +25,7 @@ function translate(query = '', lang) {
     });
 }
 
-export default async function googleTranslate(subtitle = [], lang) {
+export default async function googleTranslate(subtitle = [], lang, prevLang='en') {
     return new Promise((resolve, reject) => {
         const result = [];
         (function loop() {
@@ -33,6 +33,7 @@ export default async function googleTranslate(subtitle = [], lang) {
             if (item) {
                 translate(item.text, lang)
                     .then((text) => {
+                        if (prevLang === 'en') item.originalText = item.text;
                         item.text = text;
                         result.push(item);
                         sleep(100).then(loop);
