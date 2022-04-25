@@ -17,7 +17,7 @@ export function url2sub(url) {
                 Array.from($track.track.cues).map((item) => {
                     const start = DT.d2t(item.startTime);
                     const end = DT.d2t(item.endTime);
-                    const text = item.text;
+                    const text = item.text.replaceAll('&nbsp;', ' ');
                     return new Sub({ start, end, text });
                 }),
             );
