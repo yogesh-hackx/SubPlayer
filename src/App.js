@@ -24,17 +24,18 @@ const Style = styled.div`
             flex: 1;
         }
 
-        .subtitles {
-            width: 250px;
-        }
+        // .subtitles {
+        //     width: 250px;
+        // }
 
-        .tool {
-            width: 300px;
-        }
+        // .tool {
+        //     width: 300px;
+        // }
     }
 
     .footer {
         height: 200px;
+        overflow: hidden;
     }
 `;
 
@@ -50,6 +51,8 @@ export default function App({ defaultLang }) {
     const [playing, setPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [currentIndex, setCurrentIndex] = useState(-1);
+    const [lastVideo, setLastVideo] = useState(null);
+    const [subTranslationLang, setSubTranslationLang] = useState('en');
 
     const newSub = useCallback((item) => new Sub(item), []);
     const hasSub = useCallback((sub) => subtitle.indexOf(sub), [subtitle]);
@@ -91,6 +94,7 @@ export default function App({ defaultLang }) {
 
     const clearSubs = useCallback(() => {
         setSubtitle([]);
+        localStorage.clear()
         subtitleHistory.current.length = 0;
     }, [setSubtitle, subtitleHistory]);
 
@@ -247,6 +251,12 @@ export default function App({ defaultLang }) {
     }, [currentTime, subtitle]);
 
     useEffect(() => {
+        if (localStorage.getItem('lastYTVideo') !== null) {
+            setLastVideo(localStorage.getItem('lastYTVideo'));
+        }
+    }, []);
+
+    useEffect(() => {
         const localSubtitleString = window.localStorage.getItem('subtitle');
         const fetchSubtitle = () =>
             fetch('/sample.json')
@@ -290,7 +300,7 @@ export default function App({ defaultLang }) {
         setLoading,
         setProcessing,
         subtitleHistory,
-
+        lastVideo,
         notify,
         newSub,
         hasSub,
@@ -303,13 +313,15 @@ export default function App({ defaultLang }) {
         formatSub,
         mergeSub,
         splitSub,
+        subTranslationLang,
+        setSubTranslationLang
     };
 
     return (
         <Style>
             <div className="main">
                 <Player {...props} />
-                <Subtitles {...props} />
+                {/* <Subtitles {...props} /> */}
                 <Tool {...props} />
             </div>
             <Footer {...props} />

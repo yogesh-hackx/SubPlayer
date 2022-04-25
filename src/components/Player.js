@@ -4,6 +4,7 @@ import { Translate } from 'react-i18nify';
 import styled from 'styled-components';
 import backlight from '../libs/backlight';
 import { isPlaying } from '../utils';
+import { ReactTransliterate } from 'react-transliterate';
 
 const Style = styled.div`
     display: flex;
@@ -11,7 +12,7 @@ const Style = styled.div`
     justify-content: center;
     height: 100%;
     width: 100%;
-    padding: 20% 10%;
+    padding: 36px 16px;
 
     .video {
         display: flex;
@@ -80,11 +81,23 @@ const Style = styled.div`
                 }
             }
         }
+
+        .suggestions ul {
+            z-index: 9999999999;
+            background: #181818;
+            opacity: 1;
+        }
+        .suggestions ul li:first-of-type {
+            opacity: 1;
+            background-color: #009688;
+            font-weight: bold;
+            color: white;
+        }
     }
 `;
 
 const VideoWrap = memo(
-    ({ setPlayer, setCurrentTime, setPlaying }) => {
+    ({ setPlayer, setCurrentTime, setPlaying, player, lastVideo }) => {
         const $video = createRef();
 
         useEffect(() => {
@@ -110,7 +123,7 @@ const VideoWrap = memo(
             }
         }, [$video]);
 
-        return <video onClick={onClick} src="/sample.mp4?t=1" ref={$video} />;
+        return <video onClick={onClick} src={localStorage.getItem('lastYTVideo') || '/sample.mp4?t=1'} ref={$video} />;
     },
     () => true,
 );
@@ -119,6 +132,7 @@ export default function Player(props) {
     const [currentSub, setCurrentSub] = useState(null);
     const [focusing, setFocusing] = useState(false);
     const [inputItemCursor, setInputItemCursor] = useState(0);
+    const [hasTranslation, setHasTranslation] = useState(false);
     const $player = createRef();
 
     useEffect(() => {
@@ -127,6 +141,11 @@ export default function Player(props) {
             backlight($player.current, props.player);
         }
     }, [$player, props.player]);
+
+    useEffect(() => {
+        if (props.subtitle[0]?.originalText === undefined) setHasTranslation(false);
+        else setHasTranslation(true);
+    }, [props.subtitle, props.player])
 
     useMemo(() => {
         setCurrentSub(props.subtitle[props.currentIndex]);
@@ -139,6 +158,14 @@ export default function Player(props) {
             if (event.target.selectionStart) {
                 setInputItemCursor(event.target.selectionStart);
             }
+        },
+        [props, currentSub],
+    );
+
+    const onChangeTranslated = useCallback(
+        (text) => {
+            props.player.pause();
+            props.updateSub(currentSub, { text });
         },
         [props, currentSub],
     );
@@ -171,7 +198,7 @@ export default function Player(props) {
     return (
         <Style className="player">
             <div className="video" ref={$player}>
-                <VideoWrap {...props} />
+                <VideoWrap {...props} lastVideo={props.lastVideo} />
                 {props.player && currentSub ? (
                     <div className="subtitle">
                         {focusing ? (
@@ -179,16 +206,32 @@ export default function Player(props) {
                                 <Translate value="SPLIT" />
                             </div>
                         ) : null}
-                        <TextareaAutosize
-                            className={`textarea ${!props.playing ? 'pause' : ''}`}
-                            value={currentSub.text}
-                            onChange={onChange}
-                            onClick={onClick}
-                            onFocus={onFocus}
-                            onBlur={onBlur}
-                            onKeyDown={onFocus}
-                            spellCheck={false}
-                        />
+                        {
+                            hasTranslation ? (
+                                <ReactTransliterate
+                                    renderComponent={(props) => <TextareaAutosize {...props} />}
+                                    value={currentSub.text}
+                                    maxLength={200}
+                                    spellCheck={false}
+                                    containerClassName="suggestions"
+                                    containerStyles={{ width: '100%' }}
+                                    className={`textarea ${!props.playing ? 'pause' : ''}`}
+                                    onChangeText={onChangeTranslated}
+                                    lang={props?.subTranslationLang}
+                                />
+                            ) : (
+                                <TextareaAutosize
+                                    className={`textarea ${!props.playing ? 'pause' : ''}`}
+                                    value={currentSub.text}
+                                    onChange={onChange}
+                                    onClick={onClick}
+                                    onFocus={onFocus}
+                                    onBlur={onBlur}
+                                    onKeyDown={onFocus}
+                                    spellCheck={false}
+                                />
+                            )
+                        }
                     </div>
                 ) : null}
             </div>

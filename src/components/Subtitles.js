@@ -3,6 +3,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Table } from 'react-virtualized';
 import unescape from 'lodash/unescape';
 import debounce from 'lodash/debounce';
+import { ReactTransliterate } from 'react-transliterate';
 
 const Style = styled.div`
     position: relative;
@@ -15,9 +16,12 @@ const Style = styled.div`
         }
 
         .ReactVirtualized__Table__row {
+            overflow: visible !important;
+
             .item {
                 height: 100%;
                 padding: 5px;
+                display: flex;
 
                 .textarea {
                     border: none;
@@ -42,17 +46,33 @@ const Style = styled.div`
                         background-color: rgb(123 29 0);
                         border: 1px solid rgba(255, 255, 255, 0.3);
                     }
+                    &[disabled] {
+                        cursor: pointer;
+                    }
+                }
+
+                .suggestions ul {
+                    z-index: 9999999999;
+                    background: #181818;
+                    opacity: 1;
+                }
+                .suggestions ul li:first-of-type {
+                    opacity: 1;
+                    background-color: #009688;
+                    font-weight: bold;
+                    color: white;
                 }
             }
         }
     }
 `;
 
-export default function Subtitles({ currentIndex, subtitle, checkSub, player, updateSub }) {
+export default function Subtitles({ currentIndex, subtitle, checkSub, player, updateSub, subTranslationLang }) {
     const [height, setHeight] = useState(100);
+    const [hasTranslation, setHasTranslation] = useState(false);
 
     const resize = useCallback(() => {
-        setHeight(document.body.clientHeight - 170);
+        setHeight(document.getElementById('tools').clientHeight - 290);
     }, [setHeight]);
 
     useEffect(() => {
@@ -64,11 +84,16 @@ export default function Subtitles({ currentIndex, subtitle, checkSub, player, up
         }
     }, [resize]);
 
+    useEffect(() => {
+        if (subtitle[0]?.originalText === undefined) setHasTranslation(false);
+        else setHasTranslation(true);
+    }, [subtitle, player])
+
     return (
         <Style className="subtitles">
             <Table
                 headerHeight={40}
-                width={250}
+                width={hasTranslation ? 500 : 250}
                 height={height}
                 rowHeight={80}
                 scrollToIndex={currentIndex}
@@ -91,9 +116,30 @@ export default function Subtitles({ currentIndex, subtitle, checkSub, player, up
                             }}
                         >
                             <div className="item">
-                                <textarea
+                                {
+                                    hasTranslation &&
+                                    <textarea
+                                        maxLength={200}
+                                        spellCheck={false}
+                                        disabled
+                                        className={[
+                                            'textarea',
+                                            currentIndex === props.index ? 'highlight' : '',
+                                            checkSub(props.rowData) ? 'illegal' : '',
+                                        ]
+                                            .join(' ')
+                                            .trim()}
+                                        value={unescape(props.rowData.originalText)}
+                                    />
+                                }
+                                <ReactTransliterate
+                                    renderComponent={(props) => <textarea {...props} />}
+                                    value={unescape(props.rowData.text)}
                                     maxLength={200}
+                                    enabled={hasTranslation}
                                     spellCheck={false}
+                                    containerClassName="suggestions"
+                                    containerStyles={{width: '100%'}}
                                     className={[
                                         'textarea',
                                         currentIndex === props.index ? 'highlight' : '',
@@ -101,13 +147,13 @@ export default function Subtitles({ currentIndex, subtitle, checkSub, player, up
                                     ]
                                         .join(' ')
                                         .trim()}
-                                    value={unescape(props.rowData.text)}
-                                    onChange={(event) => {
+                                    onChangeText={(text) => {
                                         updateSub(props.rowData, {
-                                            text: event.target.value,
+                                            text: text,
                                         });
                                     }}
-                                />
+                                    lang={subTranslationLang}
+                                    />
                             </div>
                         </div>
                     );

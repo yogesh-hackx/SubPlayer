@@ -2,6 +2,7 @@ import 'core-js';
 import 'normalize.css';
 import './libs/contextmenu.css';
 import 'antd/dist/antd.dark.css';
+import "react-transliterate/dist/index.css";
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { isMobile } from './utils';
