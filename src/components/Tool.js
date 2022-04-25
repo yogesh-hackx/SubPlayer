@@ -618,12 +618,6 @@ export default function Header({
                     </span>
                 </div>
             </div>
-            <div className="bottom">
-                <a href="https://online.aimu-app.com/">
-                    <div className="title">全新字幕编辑器来了，点击这里体验</div>
-                    <img src="/aimu.png" alt="aimu" />
-                </a>
-            </div>
         </Style>
     );
 }
