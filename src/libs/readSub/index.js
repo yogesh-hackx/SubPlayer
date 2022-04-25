@@ -8,6 +8,7 @@ export function url2sub(url) {
     return new Promise((resolve) => {
         const $video = document.createElement('video');
         const $track = document.createElement('track');
+        $video.setAttribute('crossorigin', 'use-credentials')
         $track.default = true;
         $track.kind = 'metadata';
         $video.appendChild($track);
