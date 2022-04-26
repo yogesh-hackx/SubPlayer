@@ -443,6 +443,7 @@ export default function Header({
                 player.currentTime = 0;
                 clearSubs();
 
+                // persist state in localstorage
                 resetTranslateLang();
                 localStorage.setItem('lastYTVideo', video);
 
