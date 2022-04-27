@@ -552,6 +552,9 @@ export default function Header({
     const onTranslate = useCallback(() => {
         setLoading(t('TRANSLATING'));
         setSubTranslationLang(translate);
+        if (subtitle[0]?.originalText !== undefined) {
+            subtitle.forEach((sub, i) => subtitle[i].text = sub.originalText)
+        }
         googleTranslate(formatSub(subtitle), translate, localStorage.getItem('prevLang'))
             .then((res) => {
                 setLoading('');
