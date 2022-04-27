@@ -286,6 +286,7 @@ export default function Header({
     currentIndex,
     checkSub,
     updateSub,
+    subTranslationLang,
     setSubTranslationLang,
 }) {
     const [translate, setTranslate] = useState('en');
@@ -701,6 +702,7 @@ export default function Header({
                         checkSub={checkSub}
                         player={player}
                         updateSub={updateSub}
+                        subTranslationLang={subTranslationLang}
                     />
                 </div>
             </div>
